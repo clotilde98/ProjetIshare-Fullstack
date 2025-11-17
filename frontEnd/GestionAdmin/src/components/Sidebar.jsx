@@ -47,7 +47,7 @@ const Sidebar = () => (
       </li>
 
       <li>
-        <NavLink to="/dashboard/utilisateurs" className="nav-link">
+        <NavLink to="/dashboard/Users" className="nav-link">
           <div className="nav-item">
             <img src={usersIcon} alt="Users" width="18" /> <span>Utilisateurs</span>
           </div>

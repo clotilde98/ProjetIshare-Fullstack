@@ -7,9 +7,9 @@ body {
 
 .formParent {
   display: flex;
-  justify-content: center;   /* centre horizontalement */
-  align-items: center;       /* centre verticalement */
-  height: 100vh;             /* prend toute la hauteur de l’écran */
+  justify-content: center;   
+  align-items: center;      
+  height: 100vh;             
 }
 
 .form {

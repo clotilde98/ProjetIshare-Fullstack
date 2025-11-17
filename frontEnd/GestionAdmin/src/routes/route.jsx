@@ -20,8 +20,8 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Stats /> },            // /dashboard -> Stats
-      { path: "comments", element: <Comments /> },    // /dashboard/comments
+      { index: true, element: <Stats /> },            
+      { path: "comments", element: <Comments /> },    
       { path: "posts", element: <Posts /> },   
       { path: "reservations", element: <Reservation /> } ,     
     ],

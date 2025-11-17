@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
-// Assurez-vous que le chemin d'accès à Axios est correct
 import Axios from "../services/api"; 
 
-// Importation des icônes (inchangé)
 import annoncesIcon from "../assets/dashboard/megaphone.png"; 
 import reservationsIcon from "../assets/dashboard/today.png";
 import usersIcon from "../assets/dashboard/usersActif.png"; 
@@ -49,28 +47,28 @@ const Stats = () => {
     <section className="stats-section">
       <div className="stats-grid">
         
-        {/* Stat 1: Annonces */}
+    
         <div className="stat-card">
           <img src={annoncesIcon} alt="Icône Annonces" className="stat-icon" />
           <h5>Nombre d’annonces</h5>
           <p className="stat-value">{stats.totalAnnonces}</p>
         </div>
 
-        {/* Stat 2: Réservations */}
+    
         <div className="stat-card">
           <img src={reservationsIcon} alt="Icône Réservations" className="stat-icon" />
           <h5>Réservations effectuées</h5>
           <p className="stat-value">{stats.totalReservations}</p>
         </div>
 
-        {/* Stat 3: Utilisateurs actifs */}
+     
         <div className="stat-card">
           <img src={usersIcon} alt="Icône Utilisateurs" className="stat-icon" />
           <h5>Utilisateurs</h5>
           <p className="stat-value">{stats.utilisateursActifs}</p>
         </div>
 
-        {/* Stat 4: Nombre de retraits */}
+      
         <div className="stat-card">
           <img src={retraitsIcon} alt="Icône Retraits" className="stat-icon" />
           <h5>Nombre de retraits</h5>

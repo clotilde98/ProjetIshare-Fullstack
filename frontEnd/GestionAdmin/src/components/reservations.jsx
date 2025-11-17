@@ -71,13 +71,11 @@ const Reservation = () => {
     setDataSource(filtered);
   };
 
-  // Exemple de filtre (ici : âge > 30)
   const handleFilter = () => {
     const filtered = initialData.filter((item) => item.age > 30);
     setDataSource(filtered);
   };
 
-  // Exemple d’ajout
   const handleAdd = () => {
     const newItem = {
       key: dataSource.length + 1,

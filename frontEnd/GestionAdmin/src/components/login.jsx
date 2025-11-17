@@ -26,20 +26,17 @@ const Login = () => {
     }
 
     try {
-      // Envoi des identifiants au backend
       const response = await Axios.post("/login", { email, password });
       
-      // Si la connexion réussit, le token est dispatché et stocké
       dispatch(loginSuccess(response.data.token));
 
       if (response.data.token) {
         navigate("/dashboard");
       }
     } catch (err) {
-      // Gestion des erreurs de connexion (401, 403, 500, etc.)
       console.error("Erreur de connexion:", err.response ? err.response.data : err.message);
       setError("Email ou mot de passe incorrect.");
-      dispatch(logout()); // S'assurer que tout état d'auth précédent est nettoyé
+      dispatch(logout()); 
     }
   };
 
@@ -52,10 +49,10 @@ const Login = () => {
             <img className="vectorIcon" alt="Logo panier" src={group_icon} />
           </div>
 
-          {/* Affichage de l'erreur */}
+         
           {error && <div className="alert alert-danger py-1 text-center">{error}</div>}
 
-          {/* Champ Email */}
+      
           <div className="email input-group mb-3 custom-input-group-wrapper">
             <span className="input-group-text userIcon-wrapper" id="email-addon">
               <img className="userIcon" alt="Icône utilisateur" src={user_icon} />
@@ -72,13 +69,12 @@ const Login = () => {
             />
           </div>
 
-          {/* Champ Mot de Passe (Masquage par défaut) */}
           <div className="password input-group mb-3 custom-input-group-wrapper">
             <span className="input-group-text lockIcon-wrapper" id="password-addon">
               <img className="lockIcon" alt="Icône cadenas" src={lock_icon} />
             </span>
             <input
-              type="password" // 👈 Masque les caractères
+              type="password" 
               className="form-control rectangle motDePasse"
               placeholder="MOT DE PASSE"
               value={password}
@@ -88,7 +84,6 @@ const Login = () => {
             />
           </div>
 
-          {/* Bouton de soumission */}
           <div className="d-grid mt-3">
             <button type="submit" className="loginBtn w-100 btn mb-2">
               CONNECTER
