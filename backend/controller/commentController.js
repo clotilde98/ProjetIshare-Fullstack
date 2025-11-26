@@ -2,6 +2,39 @@ import {pool} from "../database/database.js";
 import * as commentModel from "../model/comment.js";
 
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Comment:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         content:
+ *           type: string
+ *         date:
+ *           type: date
+ *         id_post:
+ *           type: integer
+ *         id_costumer:
+ *           type: integer
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     CommentAdded:
+ *       description: The Comment added at the database
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ */
 
 export const createComment = async (req, res) => {
     try{
@@ -15,6 +48,36 @@ export const createComment = async (req, res) => {
         res.sendStatus(500);
     }
 }
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     UpdatedUser:
+ *       description: The Comment updated in the database
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *     InvalidOldPassword:
+ *       description: Incorrect old password
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *     UserNotFound:
+ *       description: User not found
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *     InternalServerError:
+ *       description: Server error
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ */
 
 export const updateComment= async(req, res) => {
     try {

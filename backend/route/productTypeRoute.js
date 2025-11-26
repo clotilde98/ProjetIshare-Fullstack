@@ -6,12 +6,13 @@ import {categoryProductValidatorMiddleware} from '../middleware/validation.js';
 
 
 const router = Router();
+router.post('/', checkJWT,mustBeAdmin,categoryProductValidatorMiddleware.createCategoryProductValidator,createTypeProduct);
+
 
 router.get('/',checkJWT,mustBeAdmin, getCategories);
 
-router.post('/', checkJWT,mustBeAdmin,categoryProductValidatorMiddleware.createCategoryProductValidator,createTypeProduct);
-router.patch('/',checkJWT,mustBeAdmin,categoryProductValidatorMiddleware.updateCategoryProductValidator, updateTypeProduct);
-router.delete('/',checkJWT,mustBeAdmin, deleteTypeProduct);
+router.patch('/:id',checkJWT,mustBeAdmin,categoryProductValidatorMiddleware.updateCategoryProductValidator, updateTypeProduct);
+router.delete('/:id',checkJWT,mustBeAdmin, deleteTypeProduct);
 
 
 export default router;

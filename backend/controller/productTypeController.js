@@ -21,42 +21,82 @@ export const getCategories = async (req, res) => {
 
 export const createTypeProduct = async (req, res) => {
     try {
+        const { nameCategory } = req.body;
         
-        const productType = await typeProductModel.getCategories(pool, {nameCategory:req.body.nameCategory});
-        if (productType){
+        if (!nameCategory) {
+             return res.status(400).send("Le nom de la catégorie est requis.");
+        }
+
+        const categoryData = { nameCategory }; 
+
+        const existingType = await typeProductModel.getCategories(pool, categoryData);
+        
+        if (existingType && existingType.rows && existingType.rows.length > 0) {
             return res.status(409).send("Type already exists");
         }
 
-        const productCreated=await typeProductModel.createTypeProduct(pool, req.body);
-        if(productCreated){
-            res.status(201).send(productCreated);
-        }else{
-            res.status(404).send("No product type found"); 
-        }
-    }catch(err){
-        res.status(500).send(err.message);
+        const productCreated = await typeProductModel.createTypeProduct(pool, categoryData);
+        
+        if (productCreated) {
+            return res.status(201).send(productCreated);
+        } 
+        
+        return res.status(500).send("Échec de la création de la catégorie.");
+
+    } catch(err) {
+        console.error("Erreur création catégorie :", err);
+        res.status(500).send(err.message || "Erreur interne du serveur");
     }
-}
+};
 
 export const updateTypeProduct = async (req, res) => {
     try {
-        await typeProductModel.updateTypeProduct(pool, req.body);
-        res.sendStatus(204);
-    }catch(err){
-        console.log(err);
-        res.sendStatus(500);
+        const idCategory = parseInt(req.params.id, 10); 
+        
+        if (isNaN(idCategory)) {
+            return res.status(404).json({ message: "Catégorie non trouvée." });
+        }
+        
+        const nameCategory = req.body.nameCategory;
+        
+        const updated = await typeProductModel.updateTypeProduct(pool, { 
+            idCategory: idCategory, 
+            nameCategory: nameCategory 
+        });
+
+        if (updated) {
+           
+            return res.sendStatus(204); 
+        } else {
+            return res.status(404).json({ message: "Catégorie non trouvée." });
+        }
+
+    } catch (err) {
+        console.error('Erreur lors de la mise à jour de la catégorie:', err);
+        return res.status(500).json({ message: "Erreur interne du serveur." });
     }
-}
+};
 
 
 export const deleteTypeProduct = async (req, res) => {
-    try{
-        await typeProductModel.deleteTypeProduct(pool, req.body);
-        res.sendStatus(204);
+    try{
+        const idCategory = req.params.id; 
 
-    }catch{
-        console.log(err);
-        res.sendStatus(500);
-    }
+        if (!idCategory) {
+            return res.status(400).send("ID de catégorie est requis pour la suppression.");
+        }
+        
+        const deleted = await typeProductModel.deleteTypeProduct(pool, { idCategory });
+        
+        if (deleted) {
+		    res.sendStatus(204);
+        } else {
+            res.status(404).send("Catégorie non trouvée ou non supprimée.");
+        }
+
+    }catch(err){
+        console.error('Erreur suppression catégorie :', err);
+        res.status(500).send(err.message || "Erreur interne du serveur");
+    }
 }
 

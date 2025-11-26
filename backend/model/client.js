@@ -118,28 +118,41 @@ export const deleteUser = async (SQLClient, id) => {
 };
 
 
+// /model/client.js (Version corrigée et complète)
 
 export const getUsers = async (SQLClient, { name, role, page = 1, limit = 10 }) => {
-  const offset = (page - 1) * limit;
-  const conditions = [];
-  const values = [];
+    const offset = (page - 1) * limit;
+    const conditions = [];
+    const values = [];
 
-  if (name) {
-    conditions.push(`LOWER(c.username) LIKE LOWER($${values.length + 1})`);
-    values.push(`%${name}%`);
-  }
+    // 1. GESTION DE LA RECHERCHE PAR NOM
+    if (name) {
+        // Le $1 est crucial pour éviter l'injection SQL
+        conditions.push(`LOWER(c.username) LIKE LOWER($${values.length + 1})`);
+        values.push(`%${name}%`);
+    }
 
-  if (role === 'admin') {
-    conditions.push(`c.is_admin = true`);
-  } else if (role === 'user') {
-    conditions.push(`c.is_admin = false`);
-  }
+    // 2. GESTION DU FILTRE PAR ROLE
+    if (role === 'admin') {
+        conditions.push(`c.is_admin = true`);
+    } else if (role === 'user') {
+        conditions.push(`c.is_admin = false`);
+    }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    // 💡 Ajout de l'espace initial si la clause WHERE est présente
+    const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
 
-  const query = `
+    // 3. Requête COUNT pour le total
+    const countQuery = `
+        SELECT COUNT(c.id) AS total
+        FROM Client c
+        JOIN Address a ON c.address_id = a.id${whereClause}
+    `;
+    
+    // 4. Requête DATA pour les données paginées
+    const dataQuery = `
     SELECT c.id, c.username, c.email, c.registration_date,
-           c.is_admin, a.city, a.postal_code
+           c.is_admin, a.city, a.postal_code,c.street,c.street_number
     FROM Client c
     JOIN Address a ON c.address_id = a.id
     ${whereClause}
@@ -147,6 +160,18 @@ export const getUsers = async (SQLClient, { name, role, page = 1, limit = 10 }) 
     LIMIT ${limit} OFFSET ${offset}
   `;
 
-  const { rows } = await SQLClient.query(query, values);
-  return rows;
+    try {
+        const [countResult, dataResult] = await Promise.all([
+            SQLClient.query(countQuery, values),
+            SQLClient.query(dataQuery, values),
+        ]);
+        
+        const total = parseInt(countResult.rows[0].total, 10);
+        const rows = dataResult.rows;
+
+        return { rows, total }; 
+
+    } catch (err) {
+        throw new Error(`Erreur SQL dans getUsers : ${err.message}`); 
+    }
 };

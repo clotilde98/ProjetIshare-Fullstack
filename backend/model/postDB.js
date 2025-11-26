@@ -17,7 +17,7 @@ export const createPost = async (SQLClient, clientID, {description, title, numbe
 
 
 
-export const updatePost = async(SQLClient, {id, description, title, numberOfPlaces, postStatus, photo, addressID, clientID}) => {
+export const updatePost = async(SQLClient, {id, description, title, numberOfPlaces, postStatus, photo,street,streetNumber, addressID}) => {
     let query = "UPDATE post SET ";
     const querySet = [];
     const queryValues = [];
@@ -47,15 +47,19 @@ export const updatePost = async(SQLClient, {id, description, title, numberOfPlac
         querySet.push(`photo = $${queryValues.length}`);
     }
 
+    if (street){
+        queryValues.push(street);
+        querySet.push(`street = $${queryValues.length}`);
+    }
+
+    if (streetNumber){
+        queryValues.push(streetNumber);
+        querySet.push(`street_number = $${queryValues.length}`);
+    }
+
     if (addressID){
         queryValues.push(addressID);
         querySet.push(`address_id = $${queryValues.length}`);
-    }
-
-
-    if (clientID){
-        queryValues.push(clientID);
-        querySet.push(`client_id = $${queryValues.length}`);
     }
 
 
@@ -95,36 +99,70 @@ export const getAllCategoriesFromPostID = async (SQLClient, id) => {
 
 
 export const getPosts = async (SQLClient, { city, postStatus, page = 1, limit = 10 }) => {
-  const offset = (page - 1) * limit;
-  const conditions = [];
-  const values = [];
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    const offset = (pageNum - 1) * limitNum;
+    
+    const conditions = [];
+    const values = [];
 
-
-  if (city) {
-    conditions.push(`LOWER(a.city) LIKE LOWER($${values.length + 1})`);
-    values.push(`%${city}%`);
-  }
-
-  if (postStatus){
-    if (postStatus === 'available' || postStatus === 'unavailable'){
-        conditions.push(`p.post_status = $${values.length + 1}`);
-        values.push(postStatus);
+    if (city) {
+        values.push(`%${city}%`);
+        conditions.push(`LOWER(a.city) LIKE LOWER($${values.length})`);
     }
-  }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    if (postStatus) {
+        if (postStatus === 'available' || postStatus === 'unavailable') {
+            values.push(postStatus);
+            conditions.push(`p.post_status = $${values.length}`);
+        }
+    }
 
-  const query = `
-    SELECT p.id, p.title, string_agg(cp.name_category, ', ') AS categories, a.city, p.number_of_places, p.post_status
-    FROM Post p
-    JOIN Address a ON p.address_id = a.id
-    INNER JOIN Post_category pc ON pc.id_ad = p.id
-    INNER JOIN Category_product cp ON cp.id_category = pc.id_category
-    ${whereClause}
-    GROUP BY p.id, a.city, p.number_of_places, p.post_status
-    LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-  `;
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const { rows } = await SQLClient.query(query, values);
-  return rows;
+    const countQuery = `
+        SELECT COUNT(p.id)
+        FROM Post p
+        JOIN Address a ON p.address_id = a.id
+        ${whereClause}
+    `;
+
+    const totalResult = await SQLClient.query(countQuery, values);
+    const total = parseInt(totalResult.rows[0].count, 10);
+    const limitIndex = values.length + 1;
+    const offsetIndex = values.length + 2;
+
+    const dataQuery = `
+        SELECT 
+            p.id, 
+            p.title, 
+            string_agg(cp.name_category, ', ') AS categories, 
+            a.city,
+            p.description,
+            c.username, 
+            p.number_of_places, 
+            p.post_status,
+            p.street ,
+            p.street_number,
+            a.postal_code
+        FROM Post p
+        JOIN Address a ON p.address_id = a.id
+        JOIN Client c ON p.client_id = c.id 
+        INNER JOIN Post_category pc ON pc.id_ad = p.id
+        INNER JOIN Category_product cp ON cp.id_category = pc.id_category
+        ${whereClause}
+        GROUP BY p.id, p.title, a.city, c.username, p.number_of_places, p.post_status,a.postal_code,p.street, p.street_number
+        LIMIT $${limitIndex} OFFSET $${offsetIndex}
+    `;
+
+    values.push(limitNum);
+    values.push(offset);
+    
+    const { rows } = await SQLClient.query(dataQuery, values);
+
+    return {
+        rows: rows,
+        total: total
+    };
 };

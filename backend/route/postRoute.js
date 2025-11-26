@@ -21,7 +21,7 @@ router.post("/", checkJWT, postValidatorMiddleware.createPostValidator, createPo
 router.get("/byCategory", searchPostByCategory);  
 router.get("/:id", getPost);     
 router.get("/", getPosts);      
-router.patch("/", checkJWT, postOwner, postValidatorMiddleware.updatePostValidator, updatePost);     
+router.patch("/:id", checkJWT, postOwner, postValidatorMiddleware.updatePostValidator, updatePost);     
 router.delete("/:id", checkJWT, postOwner, deletePost);      
 
 export default router;

@@ -12,7 +12,7 @@ import productTypeRouter from './productTypeRoute.js'
 
 const router = Router();
 
-router.use('/users', userRouter);
+router.use('/users', checkJWT,userRouter);
 router.use('/posts', checkJWT, postRouter);
 router.use('/reservations', checkJWT, reservationRouter);
 /**
@@ -71,5 +71,5 @@ router.get('/getAllCities', getAllCities);
  *       500 :
  *         description: Error server 
  */
-router.use('/productType', productTypeRouter);
+router.use('/productType',checkJWT, productTypeRouter);
 export default router;

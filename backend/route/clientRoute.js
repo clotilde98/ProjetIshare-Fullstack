@@ -126,9 +126,9 @@ router.delete("/:id", checkJWT, isSameUser, deleteUser);
   *       description: Error server 
   *    
   */
- 
 
-router.patch("/", checkJWT, isSameUser, clientValidatorMiddleware.updateClientValidator , updateUser);  
+
+router.patch("/id", checkJWT, isSameUser, clientValidatorMiddleware.updateClientValidator , updateUser);  
 
 
 

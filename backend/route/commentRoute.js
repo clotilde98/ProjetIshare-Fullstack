@@ -7,7 +7,7 @@ import {isSameUser} from '../middleware/identification/user.js'
 
 const router = Router();
 
-router.get('/',getComments);
+router.get('/',checkJWT,getComments);
 router.post('/',checkJWT,commentValidatorMiddleware.addCommentValidator,createComment);
 router.patch('/',checkJWT,commentValidatorMiddleware.updateCommentValidator,updateComment);
 router.delete('/:id',checkJWT, deleteComment);
