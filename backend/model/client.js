@@ -126,26 +126,32 @@ export const deleteUser = async (SQLClient, id) => {
 
 
 export const getUsers = async (SQLClient, { name, role, page = 1, limit = 10 }) => {
-  const offset = (page - 1) * limit;
-  const conditions = [];
-  const values = [];
+    const offset = (page - 1) * limit;
+    const conditions = [];
+    const values = [];
 
-  if (name) {
-    conditions.push(`LOWER(c.username) LIKE LOWER($${values.length + 1})`);
-    values.push(`%${name}%`);
-  }
+    if (name) {
+        conditions.push(`LOWER(c.username) LIKE LOWER($${values.length + 1})`);
+        values.push(`%${name}%`);
+    }
 
-  if (role === 'admin') {
-    conditions.push(`c.is_admin = true`);
-  } else if (role === 'user') {
-    conditions.push(`c.is_admin = false`);
-  }
+    if (role === 'admin') {
+        conditions.push(`c.is_admin = true`);
+    } else if (role === 'user') {
+        conditions.push(`c.is_admin = false`);
+    }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
 
-  const query = `
+    const countQuery = `
+        SELECT COUNT(c.id) AS total
+        FROM Client c
+        JOIN Address a ON c.address_id = a.id${whereClause}
+    `;
+    
+    const dataQuery = `
     SELECT c.id, c.username, c.email, c.registration_date,
-           c.is_admin, a.city, a.postal_code
+           c.is_admin, a.city, a.postal_code,c.street,c.street_number
     FROM Client c
     JOIN Address a ON c.address_id = a.id
     ${whereClause}
@@ -153,6 +159,18 @@ export const getUsers = async (SQLClient, { name, role, page = 1, limit = 10 }) 
     LIMIT ${limit} OFFSET ${offset}
   `;
 
-  const { rows } = await SQLClient.query(query, values);
-  return rows;
+    try {
+        const [countResult, dataResult] = await Promise.all([
+            SQLClient.query(countQuery, values),
+            SQLClient.query(dataQuery, values),
+        ]);
+        
+        const total = parseInt(countResult.rows[0].total, 10);
+        const rows = dataResult.rows;
+
+        return { rows, total }; 
+
+    } catch (err) {
+        throw new Error(`Erreur SQL dans getUsers : ${err.message}`); 
+    }
 };

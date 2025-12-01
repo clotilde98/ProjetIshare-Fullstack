@@ -1,0 +1,22 @@
+.pageTitle{
+
+   font-size: 24px;
+      font-weight: 500;
+      color: #808080;
+      padding: 16px 0 8px 0;
+      margin-bottom: 0;
+
+}
+     
+         
+ .categoryTag{
+          margin-right: 8px;
+      margin-bottom: 4px;
+      display: inline-block;
+ } 
+    
+ 
+.boldText{
+    font-weight: bold;
+
+}

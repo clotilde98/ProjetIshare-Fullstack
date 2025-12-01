@@ -1,18 +1,472 @@
-import React from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Table, Input, Button, Space, Modal, Form, message, Select, InputNumber, Row, Col } from "antd";
+import { PlusOutlined, FilterOutlined, EditOutlined, DeleteOutlined, RollbackOutlined } from "@ant-design/icons";
+import { createStyles } from "antd-style";
+import Axios from "../services/api";
+import "../styles/body.css";
+
+const { Option } = Select;
+
+const useStyle = createStyles(({ css, token }) => {
+  const { antCls } = token;
+  return {
+    customTable: css`
+      ${antCls}-table {
+        ${antCls}-table-container {
+          ${antCls}-table-body,
+          ${antCls}-table-content {
+            scrollbar-width: thin;
+            scrollbar-color: #eaeaea transparent;
+            scrollbar-gutter: stable;
+          }
+        }
+      } 
+    `, 
+  };
+});
 
 const Users = () => {
+  const { styles } = useStyle();
+  const [users, setUsers] = useState([]);
+  const [addresses, setAddresses] = useState([]); 
+  
+  const [loading, setLoading] = useState(true);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
+
+  const [searchText, setSearchText] = useState("");
+  const [roleFilter, setRoleFilter] = useState(null);
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [mode, setMode] = useState('idle');
+  const [form] = Form.useForm();
+    
+  const fetchAddresses = useCallback(async () => {
+    setLoadingAddresses(true);
+    try {
+      const res = await Axios.get("/getAllCities"); 
+      const addressesData = res.data?.rows || res.data || [];
+      const formattedAddresses = addressesData.map(addr => ({
+        id: addr.id,
+        city: addr.city,
+        postalCode: addr.postal_code,
+        displayName: `${addr.city} (${addr.postal_code})`,
+      }));
+      setAddresses(formattedAddresses);
+    } catch (err) {
+      console.error("Erreur lors du chargement des adresses:", err);
+      message.error("Impossible de charger la liste des villes.");
+    } finally {
+      setLoadingAddresses(false);
+    }
+  }, []);
+
+
+  const fetchUsers = useCallback(async (page = 1, limit = 10, name = "", role = null) => {
+    setLoading(true);
+    try {
+      const params = { page, limit };
+      if (name) params.name = name;
+      if (role) params.role = role;
+      
+      const res = await Axios.get("/users", { params });
+      const rows = res.data && Array.isArray(res.data.rows) ? res.data.rows : [];
+      const total = res.data?.total ?? 0;
+
+      const usersData = rows.map(user => ({
+        key: user.id,
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        registration_date: user.registration_date,
+        is_admin: user.is_admin,
+        address_id: user.address_id,
+        street: user.street,
+        street_number: user.street_number,
+        city: user.city, 
+        postal_code: user.postal_code, 
+      }));
+
+      setUsers(usersData);
+      setTotalUsers(total);
+      setCurrentPage(page);
+      setPageSize(limit);
+    } catch (err) {
+      console.error(err);
+      message.error("Erreur lors du chargement des utilisateurs");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers(1, pageSize, searchText, roleFilter);
+    fetchAddresses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchUsers, fetchAddresses]);
+
+
+  // --- Fonctions de Modal ---
+  const handleCancel = () => {
+    setIsModalVisible(false);
+    setEditingUser(null);
+    setDeletingUser(null);
+    setMode('idle');
+    form.resetFields();
+  };
+    
+  const handleAdd = () => {
+    setEditingUser(null);
+    setMode('create');
+    form.resetFields();
+    setIsModalVisible(true);
+    form.setFieldsValue({ is_admin: false }); 
+  };
+
+  const handleEdit = user => {
+    setEditingUser(user);
+    setMode('edit');
+    setIsModalVisible(true);
+    form.setFieldsValue({
+      username: user.username,
+      email: user.email,
+      is_admin: user.is_admin, 
+      address_id: user.address_id, 
+      street: user.street,
+      street_number: user.street_number,
+    });
+  };
+
+  const handleDelete = user => {
+    setDeletingUser(user);
+    setMode('delete'); 
+    setIsModalVisible(true); 
+  };
+
+  const handleDeleteSubmit = async () => {
+    
+    
+      try {
+        await Axios.delete(`/users/${deletingUser.id}`); 
+        
+        message.success(' Utilisateur supprimé avec succès');
+        handleCancel(); 
+        fetchUsers(currentPage, pageSize, searchText, roleFilter); 
+      } catch (err) {
+          console.error('Erreur de suppression:', err);
+          message.error(err.response?.data?.message || ` Erreur lors de la suppression.`);
+          handleCancel();
+      }
+  };
+
+
+  const handleFormSubmit = async values => {
+      const currentMode = mode;
+      if (currentMode === 'delete') return;
+    
+    // Vérification de l'adresse ID 
+    if (!values.address_id) {
+        message.error("Veuillez sélectionner une ville/code postal.");
+        return;
+    }
+    
+    try {
+      const payload = {
+        username: values.username,
+        email: values.email,
+        is_admin: values.is_admin ?? false,
+        address_id: Number(values.address_id),
+        street: values.street,
+        street_number: Number(values.street_number),
+      };
+      
+      let successMessage = '';
+
+      if (currentMode === 'edit' && editingUser) {
+        await Axios.put(`/users/${editingUser.id}`, payload);
+        successMessage = " Utilisateur mis à jour";
+      } else if (currentMode === 'create') {
+        payload.password = values.password;
+        await Axios.post("/users", payload);
+        successMessage = "Utilisateur créé";
+      }
+
+      message.success(successMessage);
+      handleCancel();
+      fetchUsers(currentMode === 'create' ? 1 : currentPage, pageSize, searchText, roleFilter);
+
+    } catch (err) {
+      console.error(err);
+      const serverMessage = err.response?.data?.message || "Erreur opération";
+      
+      // Gestion des conflits (Email ou Username)
+      if (err.response?.status === 409) {
+        const errorMsg = err.response.data?.message?.toLowerCase();
+        
+        if (errorMsg && errorMsg.includes('email')) {
+            form.setFields([
+              { name: 'email', errors: [' Cet email est déjà utilisé.'] },
+            ]);
+            errorHandled = true;
+        }
+        if (errorMsg && errorMsg.includes('username') || (errorMsg && errorMsg.includes("nom d'utilisateur"))) { // Adapter au message exact de votre API
+            form.setFields([
+              { name: 'username', errors: [' Ce nom d\'utilisateur est déjà pris.'] },
+            ]);
+            errorHandled = true;
+        }
+      }
+      
+      if(!errorHandled) {
+        message.error(serverMessage);
+      }
+    }
+  };
+
+
+  const handleTableChange = pagination => {
+    const newPage = pagination.current;
+    const newLimit = pagination.pageSize;
+    fetchUsers(newPage, newLimit, searchText, roleFilter);
+  };
+
+  const handleSearch = e => {
+    const value = e.target.value;
+    setSearchText(value);
+    fetchUsers(1, pageSize, value, roleFilter);
+  };
+
+  const handleRoleFilter = value => {
+    let newFilter = null;
+    if (value === "admin") newFilter = "admin";
+    else if (value === "not-admin") newFilter = "user";
+    setRoleFilter(newFilter);
+    fetchUsers(1, pageSize, searchText, newFilter);
+  };
+
+  const tableColumns = useMemo(() => [
+    { title: "Email", width: 180, dataIndex: "email", key: "email", fixed: "left" },
+    { title: "Nom d'utilisateur", width: 200, dataIndex: "username", key: "username", fixed: "left" },
+    { 
+          title: "Adresse Complète", 
+          dataIndex: "city", 
+          key: "address", 
+          width: 200,
+          render: (city, record) => {
+            const streetInfo = (record.street && record.street_number) ? `${record.street_number} ${record.street}` : '';
+            const cityInfo = (city && record.postal_code) ? `${city} (${record.postal_code})` : '';
+            
+            if (streetInfo && cityInfo) return `${streetInfo}, ${cityInfo}`;
+            if (streetInfo) return streetInfo;
+            if (cityInfo) return cityInfo;
+            return 'N/A';
+          }
+    }, 
+    {
+      title: "Date Inscription",
+      dataIndex: "registration_date",
+      key: "registration_date",
+      width: 140,
+      render: text => {
+        if (!text) return "N/A";
+        try { return new Date(text).toLocaleDateString('fr-FR'); }
+        catch { return "Date invalide"; }
+      }
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      fixed: "right",
+      width: 140,
+      render: (_, record) => (
+        <Space size="small">
+          <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
+          <Button type="primary" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} size="small" />
+        </Space>
+      )
+    }
+  ], []);
+
   return (
     <div className="details-panel">
-      <h2>Users</h2>
-      <p>Liste des Users.</p>
-      <ul>
-        <li>Users 1</li>
-        <li>Users 2</li>
-        <li>Users 3</li>
-      </ul>
+      <h6 className={styles.pageTitle}>Utilisateurs</h6>
+      <hr/>
+      <Space style={{ marginBottom: 16 }}>
+        {/* Filtres et actions existants */}
+        <Input.Search placeholder="Rechercher par nom" value={searchText} onChange={handleSearch} style={{ width: 250 }} />
+        <Select
+          value={roleFilter === 'admin' ? 'admin' : roleFilter === 'user' ? 'not-admin' : 'all'}
+          onChange={handleRoleFilter}
+          style={{ width: 180 }}
+          placeholder="Filtrer par Admin"
+          suffixIcon={<FilterOutlined />}
+        >
+          <Option value="all">Tous les utilisateurs</Option>
+          <Option value="admin">Administrateurs</Option>
+          <Option value="not-admin">Non-Administrateurs</Option>
+        </Select>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Ajouter un Utilisateur</Button>
+      </Space>
+
+      <Table
+        tableLayout="fixed"
+        className={styles.customTable}
+        columns={tableColumns}
+        dataSource={users}
+        loading={loading}
+        pagination={{
+          current: currentPage,
+          pageSize,
+          total: totalUsers,
+          onChange: (page, size) => handleTableChange({ current: page, pageSize: size })
+        }}
+      />
+
+      <Modal
+        title={mode === 'delete' ? 'Confirmation de suppression' : editingUser ? "Modifier l'Utilisateur" : "Ajouter un Utilisateur"}
+        open={isModalVisible}
+        onCancel={handleCancel}
+        closable={false}
+        maskClosable={false}
+        width={600}
+        footer={
+            mode === 'delete' ? [
+                <Button key="cancel-del" onClick={handleCancel} icon={<RollbackOutlined />}>Annuler</Button>,
+                <Button key="submit-del" type="primary" danger onClick={handleDeleteSubmit}>Supprimer</Button>
+            ] : [
+                <Button key="cancel" onClick={handleCancel} icon={<RollbackOutlined />}>Annuler</Button>,
+                <Button key="submit" type="primary" onClick={() => form.submit()}>{editingUser ? 'Sauvegarder' : 'Créer'}</Button>
+            ]
+        }
+      >
+        {mode === 'delete' ? (
+            <div>
+                <p>Êtes-vous sûr de vouloir supprimer l'utilisateur suivant ?</p>
+                <p style={{ fontWeight: 'bold', color: '#ff4d4f' }}>{deletingUser?.username || '—'} ({deletingUser?.email || '—'})</p>
+            </div>
+        ) : (
+          <Form 
+                form={form} 
+                layout="vertical" 
+                onFinish={handleFormSubmit}
+                initialValues={{ is_admin: editingUser?.is_admin ?? false }}
+            >
+            <Form.Item 
+                name="username" 
+                label="Nom d'utilisateur" 
+                rules={[
+                    { required: true, message: "Le nom d'utilisateur est requis" },
+                    // NOTE: La validation d'unicité (existe déjà) doit être gérée par l'API
+                    // J'ai ajouté un gestionnaire dans handleFormSubmit pour le code 409
+                ]}
+            >
+              <Input />
+            </Form.Item>
+
+            <Form.Item 
+                name="email" 
+                label="Email" 
+                rules={[
+                    { required: true, type: 'email', message: "Email requis et valide" }
+                    // La validation d'unicité (existe déjà) est gérée dans handleFormSubmit
+                ]}
+            >
+              <Input />
+            </Form.Item>
+
+            {/* Champ Mot de passe (Création uniquement) */}
+            {!editingUser && (
+              <Form.Item 
+                name="password" 
+                label="Mot de passe" 
+                rules={[
+                    { required: true, message: "Le mot de passe est requis à la création" },
+                    { min: 10, message: 'Le mot de passe doit contenir au moins 10 caractères.' }
+                ]}
+              >
+                <Input.Password placeholder="Obligatoire à la création" />
+              </Form.Item>
+            )}
+
+            {/* Champ Confirmation Mot de passe (Création uniquement) */}
+            {!editingUser && (
+                <Form.Item
+                    name="confirm"
+                    label="Confirmer Mot de passe"
+                    dependencies={['password']}
+                    hasFeedback
+                    rules={[
+                        { required: true, message: 'Veuillez confirmer votre mot de passe !' },
+                        ({ getFieldValue }) => ({
+                            validator(_, value) {
+                                if (!value || getFieldValue('password') === value) {
+                                    return Promise.resolve();
+                                }
+                                return Promise.reject(new Error('Les deux mots de passe ne correspondent pas !'));
+                            },
+                        }),
+                    ]}
+                >
+                    <Input.Password />
+                </Form.Item>
+            )}
+            
+            <Form.Item name="is_admin" label="Rôle Administrateur">
+                <Select placeholder="Sélectionnez le rôle">
+                    <Option value={true}>Administrateur</Option>
+                    <Option value={false}>Utilisateur Standard</Option>
+                </Select>
+            </Form.Item>
+
+            <hr style={{ margin: '20px 0' }}/>
+            
+            {/* --- Champs d'Adresse --- */}
+
+            <Form.Item 
+                name="address_id" 
+                label="Ville et Code Postal" 
+                rules={[{ required: true, message: "La ville et le code postal sont requis" }]}
+            >
+                <Select
+                    showSearch
+                    placeholder="Rechercher ou sélectionner une ville (ID Adresse)"
+                    loading={loadingAddresses}
+                    optionFilterProp="children"
+                    filterOption={(input, option) => 
+                        String(option.children).toLowerCase().includes(input.toLowerCase())
+                    }
+                >
+                    {addresses.map(addr => (
+                        <Option key={addr.id} value={addr.id}>
+                            {addr.displayName}
+                        </Option>
+                    ))}
+                </Select>
+            </Form.Item>
+
+            <Row gutter={16}>
+                <Col span={16}>
+                    <Form.Item name="street" label="Rue" rules={[{ required: true, message: "La rue est requise" }]}>
+                        <Input maxLength={100} />
+                    </Form.Item>
+                </Col>
+                <Col span={8}>
+                    <Form.Item name="street_number" label="Numéro" rules={[{ required: true, message: "Le numéro de rue est requis", type: 'number', min: 1 }]}>
+                        <InputNumber style={{ width: "100%" }} placeholder="Ex: 12" min={1} />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+          </Form>
+        )}
+      </Modal>
     </div>
   );
 };
 
 export default Users;
-

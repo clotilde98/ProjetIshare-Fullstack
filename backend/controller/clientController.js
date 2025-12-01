@@ -216,24 +216,25 @@ export const getOwnUser = async (req, res) => {
  *             type: string
  */
 
+
 export const getUsers = async (req, res) => {
-  try {
-    const { name, role, page, limit } = req.query;
+  try {
+    const { name, role, page, limit } = req.query;
 
-    if (role && role !== 'admin' && role !== 'user') {
-      return res.status(400).json({ message: 'Le rôle doit être "admin" ou "user".' });
-    }
+    if (role && role !== 'admin' && role !== 'user') {
+      return res.status(400).json({ message: 'Le rôle doit être "admin" ou "user".' });
+    }
 
-    const users = await userModel.getUsers(pool, {
-      name,
-      role,
-      page: parseInt(page) || 1,
-      limit: parseInt(limit) || 10
-    });
+    const result = await userModel.getUsers(pool, { 
+      name,
+      role,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10
+    });
 
-    res.status(200).json(users);
-  } catch (err) {
-    console.error('Erreur récupération utilisateurs :', err.message);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
+    res.status(200).json(result); 
+  } catch (err) {
+    console.error('Erreur récupération utilisateurs :', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 };
