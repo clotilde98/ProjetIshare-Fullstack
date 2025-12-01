@@ -4,12 +4,12 @@ import Connexion from './connexion.jsx';
 
 
 
-export default function Login({setUserToken}){
+export default function Login({setUserInfo}){
     return (
         <View style={styles.container}>
             <ImageBackground source={require('../../assets/images/background1.jpg')} style ={styles.image}>
             <Text style={styles.title}>iShare</Text>
-            <Connexion setUserToken={setUserToken}></Connexion>
+            <Connexion setUserInfo={setUserInfo}></Connexion>
             </ImageBackground>
             
         </View>
