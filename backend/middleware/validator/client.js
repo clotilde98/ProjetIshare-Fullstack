@@ -1,6 +1,7 @@
 import vine from '@vinejs/vine';
 
 const addClientSchema = vine.object({
+    googleId: vine.string().trim().optional(),
     username: vine.string().trim(),
     street : vine.string().trim(),
     streetNumber : vine.number(), 
@@ -37,7 +38,12 @@ const updateClientSchema =  vine.object({
 
 const loginSchema = vine.object({
     email: vine.string().email(),
-    password: vine.string()
+    password: vine.string().optional(),
+    idToken: vine.string().trim().optional(),
+    username: vine.string().trim().optional(),
+    street : vine.string().trim().optional(),
+    streetNumber : vine.number().optional(), 
+    photo:vine.string().optional(),
 });
 
 export const

@@ -5,6 +5,10 @@ import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from 'react-native-paper';
 import InputComponent from './input.jsx';
 
+import * as SecureStore from 'expo-secure-store';
+
+
+
 
 import {
     GoogleSignin,
@@ -14,7 +18,12 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 
+const Axios = axios.create ({
 
+    baseURL:'http://192.168.0.11:3002'
+
+    
+});
 
     
 
@@ -28,7 +37,7 @@ export default function Connexion({setUserInfo}) {
 
 
 
-
+ //email, idToken, username, streetNumber, street, photo, isAdmin, addressID}
 
 
     const handleGoogleSignIn = async () => {
@@ -42,6 +51,21 @@ export default function Connexion({setUserInfo}) {
             );
         if (isSuccessResponse(response)) {
             setUserInfo(response.data);
+
+            const res = await Axios.post("/loginWithGoogle", {
+            email: response.data.user.email,
+            idToken: response.data.idToken,
+            username: "skudle",
+            streetNumber: 1,
+            street: "rue de l europe",
+            photo: null,
+            isAdmin: false,
+            addressID: 1
+          });
+
+          await SecureStore.setItemAsync("jwt", res.data.token);
+
+          
         } else {
             console.log("Sign in was cancelled by the user")
         }
@@ -81,13 +105,13 @@ export default function Connexion({setUserInfo}) {
 
   function handleSubmit() {
     if (email && password){
-      console.log(email);
-      console.log(password);
-      axios.post('http://192.168.0.12:3002/login/', {
+      axios.post('http://192.168.0.11:3002/login/', {
         email,
         password
       })
-      .then(res => console.log(res.data))
+      .then(res => {
+        SecureStore.setItemAsync("jwt", res.data.token);
+      })
       .catch(err => console.error(err.response.data));
     }
     

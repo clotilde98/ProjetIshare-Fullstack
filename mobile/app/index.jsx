@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import Login from './components/login.jsx';
+import { useEffect } from "react";
+import * as SecureStore from 'expo-secure-store';
+
 
 import {
   GoogleSignin,
@@ -13,6 +16,11 @@ GoogleSignin.configure({
 
 export default function Index() {
   const [userInfo, setUserInfo] = useState(null);
+  useEffect(() => {
+    if (userInfo) {
+      console.log(userInfo);
+    }
+  }, [userInfo]);
 
     
   return (

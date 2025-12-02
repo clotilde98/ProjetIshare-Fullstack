@@ -14,10 +14,11 @@ CREATE TABLE Address (
 );
 
 CREATE TABLE Client (
+    googleId VARCHAR(50) UNIQUE,
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    password VARCHAR(255),
     street VARCHAR(100) NOT NULL,
     street_number INT NOT NULL,
     CHECK (street_number > 0),

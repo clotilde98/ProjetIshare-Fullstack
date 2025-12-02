@@ -2,6 +2,7 @@ import { pool } from "../database/database.js";
 import * as userModel from "../model/client.js";
 import argon2 from "argon2";
 import 'dotenv/config';
+import jwt from "jsonwebtoken";
 
 
 /**
@@ -44,15 +45,29 @@ import 'dotenv/config';
 
 export const createUser = async (req, res) => {
   try {
+    const photo = req.file ? `${req.protocol}://${req.get('host')}/images/${req.file.filename}`  : null;   
+    let user = await userModel.getUserByEmail(pool, req.body.email)
+    const googleId = req.body.googleId ? req.body.googleId : null;
     
-const photo = req.file ? `${req.protocol}://${req.get('host')}/images/${req.file.filename}`  : null;   
- const newClient = await userModel.createUser(pool, {...req.body,photo });
-    res.status(201).json({
-      message: 'Client created', id: newClient.id});
+    if (!user){
+      user = await userModel.createUser(pool, {googleId: googleId, username:req.body.username, email: req.body.email, streetNumber: req.body.streetNumber, street:req.body.street, photo:req.body.photo, isAdmin:req.body.isAdmin, addressID:req.body.addressID, password:req.body.password});
+      const token = jwt.sign(
+                  { 
+                      id: user.id, 
+                      email: user.email,
+                      isAdmin: user.is_admin,
+                  },
+                  process.env.JWT_SECRET,
+                  { expiresIn: "24h" }
+              );
+              res.send({ token });
+    } else {
+      res.status(404).send("User already exists");
+    }
   } catch (err) {
-    res.status(400).send(err.message);
+    res.status(500).send(err.message);
   }
-};
+}
 
 
 /**

@@ -3,13 +3,19 @@ import 'dotenv/config';
 import argon2 from "argon2";
 
 
-export const createUser = async (SQLClient, { username, email, password, streetNumber, street, photo = null, isAdmin = false, addressID }) => {
-  const pepper = process.env.PEPPER;
-  const passwordWithPepper = password + pepper;
-  const hash = await argon2.hash(passwordWithPepper);
+export const createUser = async (SQLClient, { googleId, username, email, password, streetNumber, street, photo = null, isAdmin = false, addressID }) => {
+
+  if (password){
+    const pepper = process.env.PEPPER;
+    const passwordWithPepper = password + pepper;
+    const hash = await argon2.hash(passwordWithPepper);
+    password = hash
+  }
+  
+  
   const { rows } = await SQLClient.query(
-    `INSERT INTO Client (username, email, password, street_number, street, photo, is_admin, address_id) VALUES ($1, $2, $3, $4, $5, $6, $7 ,$8) RETURNING *`,
-    [username, email, hash, streetNumber, street, photo, isAdmin, addressID]
+    `INSERT INTO Client (googleId, username, email, password, street_number, street, photo, is_admin, address_id) VALUES ($1, $2, $3, $4, $5, $6, $7 ,$8, $9) RETURNING *`,
+    [googleId, username, email, password, streetNumber, street, photo, isAdmin, addressID]
   );
   return rows[0];
 };
@@ -28,7 +34,7 @@ export const getUserById = async (SQLClient, id) => {
 
 export const getUserByEmail = async (SQLClient, email) => {
   const { rows } = await SQLClient.query(
-    `SELECT id, username, email, password, is_admin AS isAdmin
+    `SELECT googleId, id, username, email, password, is_admin AS isAdmin
      FROM Client
      WHERE email = $1`,
     [email]
