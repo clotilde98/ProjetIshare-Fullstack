@@ -14,9 +14,9 @@ import productTypeRouter from './productTypeRoute.js'
 const router = Router();
 
 router.use('/users',userRouter);
-router.use('/posts', postRouter);
-router.use('/reservations', reservationRouter);
-router.use('/comments', commentRouter);
+router.use('/posts', checkJWT,postRouter);
+router.use('/reservations',checkJWT, reservationRouter);
+router.use('/comments',checkJWT, commentRouter);
 
 /**
  * @swagger

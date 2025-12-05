@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Table, Input, Button, Space, Modal, Form, message, Select, InputNumber, Tag } from "antd";
-import { PlusOutlined, FilterOutlined, EditOutlined, DeleteOutlined, RollbackOutlined } from "@ant-design/icons";
+import { PlusOutlined, FilterOutlined, EditOutlined, DeleteOutlined, RollbackOutlined, CalendarOutlined } from "@ant-design/icons";
 import { createStyles } from "antd-style";
 import Axios from "../services/api"; 
 import "../styles/body.css";
@@ -23,7 +23,9 @@ const useStyle = createStyles(({ css, token }) => {
         }
       }
     `,
-   
+    categoryTag: css`
+      margin-bottom: 4px;
+    `,
   };
 });
 
@@ -53,6 +55,12 @@ const Posts = () => {
   const [form] = Form.useForm();
 
   const [pendingCategoryNames, setPendingCategoryNames] = useState([]);
+  
+  // Nouveaux états pour la réservation
+  const [isReserveModalVisible, setIsReserveModalVisible] = useState(false);
+  const [reservingPost, setReservingPost] = useState(null);
+  const [reserveForm] = Form.useForm();
+
 
   const fetchPosts = useCallback(async (page = 1, limit = 10, city = "", status = null) => {
     setLoading(true);
@@ -163,6 +171,7 @@ const Posts = () => {
     fetchClients();
     fetchAllCities();
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTableChange = (pagination) => {
@@ -334,7 +343,9 @@ const Posts = () => {
         clientID: clientID,
       };
 
-      if (currentMode === "edit" && editingPost) {       
+      console.log("Prepared payload for request:", payload);
+
+      if (currentMode === "edit" && editingPost) {       
         const res = await Axios.patch(`/posts/${editingPost.id}`, payload);
         message.success(" Annonce mise à jour");
       } else if (currentMode === "create") {
@@ -351,9 +362,9 @@ const Posts = () => {
       if (err.response && err.response.status === 400 && Array.isArray(err.response.data)) {
         console.error("Erreurs de Validation du Serveur (400):", err.response.data);
         const firstError = err.response.data[0]?.message || "Erreur de validation inconnue.";
-        message.error(`Échec de la validation: ${firstError}`);
+        message.error(` Échec de la validation: ${firstError}`);
       } else {
-        message.error(err.response?.data?.message || " Erreur opération inconnue.");
+        message.error(err.response?.data?.message || "Erreur opération inconnue.");
       }
     }
   };
@@ -371,7 +382,49 @@ const Posts = () => {
       form.setFieldsValue({ selected_category_ids: mappedIds });
       setPendingCategoryNames([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, pendingCategoryNames, mode]);
+  
+  // Fonctions de Réservation
+  const handleReserve = (post) => {
+    setReservingPost(post);
+    reserveForm.resetFields();
+    reserveForm.setFieldsValue({ post_id: post.id }); 
+    setIsReserveModalVisible(true);
+  };
+
+  const handleReserveCancel = () => {
+    setIsReserveModalVisible(false);
+    setReservingPost(null);
+    reserveForm.resetFields();
+  };
+  
+  const handleReserveSubmit = async (values) => {
+    if (!reservingPost || !reservingPost.id) {
+      message.error("Erreur: Annonce pour la réservation introuvable.");
+      return;
+    }
+    
+    try {
+      const payload = {
+        postID: reservingPost.id, 
+        clientID: Number(values.client_id), 
+        // Ajoutez ici d'autres champs de réservation si nécessaire (ex: dates)
+      };
+
+      // ⚠️ IMPORTANT : Remplacez "/reservations" par le bon endpoint de votre API
+      const res = await Axios.post("/reservations", payload); 
+      
+      message.success(`Réservation pour l'annonce "${reservingPost.title}" créée avec succès.`);
+      handleReserveCancel();
+      // fetchPosts(currentPage, pageSize, citySearch, statusFilter); // Décommenter si le statut du post change
+      
+    } catch (err) {
+      console.error("Erreur lors de la création de la réservation:", err);
+      message.error(err.response?.data?.message || "Erreur lors de la création de la réservation.");
+    }
+  };
+
 
   const tableColumns = useMemo(
     () => [
@@ -433,9 +486,19 @@ const Posts = () => {
         title: "Actions",
         key: "actions",
         fixed: "right",
-        width: 140,
+        width: 250, 
         render: (_, record) => (
           <Space size="small">
+            {/* Bouton Réserver */}
+            <Button 
+                type="default" 
+                icon={<CalendarOutlined />} 
+                onClick={() => handleReserve(record)} 
+                size="small" 
+                disabled={record.postStatus !== "available"} 
+            >
+                Réserver
+            </Button>
             <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
             <Button type="primary" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} size="small" />
           </Space>
@@ -512,6 +575,7 @@ const Posts = () => {
         }}
       />
 
+      {/* Modal CRUD (Création, Modification, Suppression) */}
       <Modal
         title={mode === "delete" ? "Confirmation de suppression" : editingPost ? "Modifier l'Annonce" : "Créer une Annonce"}
         open={isModalVisible}
@@ -682,6 +746,47 @@ const Posts = () => {
             )}
           </Form>
         )}
+      </Modal>
+
+      {/* Modal de Réservation (Ajustements Appliqués) */}
+      <Modal
+        title={`Réserver l'Annonce: ${reservingPost?.title || "..."}`}
+        open={isReserveModalVisible}
+        onCancel={handleReserveCancel}
+        closable={false} // ✅ Pas de croix de fermeture
+        maskClosable={false}
+        footer={[
+          <Button key="cancel-res" onClick={handleReserveCancel} icon={<RollbackOutlined />}>
+            Annuler
+          </Button>,
+          <Button key="submit-res" type="primary" danger onClick={() => reserveForm.submit()}>
+            Confirmer Réservation
+          </Button>,
+        ]}
+      >
+        <Form form={reserveForm} layout="vertical" onFinish={handleReserveSubmit}>
+            {/* Champ masqué pour l'ID du Post */}
+            <Form.Item name="post_id" hidden>
+                <Input /> 
+            </Form.Item>
+            
+            {/* ✅ Affichage simple de l'ID du post, le titre est déjà dans le titre du Modal */}
+            <p style={{ marginBottom: 16 }}>
+                L'ID du Post à réserver est : <strong>{reservingPost?.id || "—"}</strong>. Veuillez sélectionner le client.
+            </p>
+
+            <Form.Item name="client_id" label="Sélectionnez le Client à Réserver" rules={[{ required: true, message: "Veuillez sélectionner le client qui réserve" }]}>
+                <Select showSearch placeholder="Rechercher et sélectionner un client" loading={loadingClients} optionFilterProp="children" filterOption={(input, option) => String(option.children).toLowerCase().includes(input.toLowerCase())}>
+                    {clients.map((client) => (
+                        <Option key={client.id} value={client.id}>
+                            {/* ✅ Affichage du nom d'utilisateur et de l'ID complet */}
+                            {client.name} (ID {client.id})
+                        </Option>
+                    ))}
+                </Select>
+            </Form.Item>
+            
+        </Form>
       </Modal>
     </div>
   );
